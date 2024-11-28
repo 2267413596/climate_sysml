@@ -1,30 +1,33 @@
 package SmartHouseClimateCtrlorSystem{
-    package System{
-        part def TemperatureSensor{
-            attribute EnvTemperature;
-            action MeasureTemperature;
-        }
-        part def HumiditySensor{
-            attribute EnvHumidity;
-            action MeasureHumidity;
-        }
-        part def ClimateController{
-            ref part TemperatureSensor;
-            ref part HumiditySensor;
-            attribute TemperatureThreshold;
-            attribute HumidityThreshold;
-            action AdjustClimate{
-                in EnvHumidity;
-                in EnvTemperature;
-                out ControlSignal;
+    package Definitions{
+        package System{
+            part def TemperatureSensor{
+                attribute EnvTemperature;
+                action MeasureTemperature;
             }
-        }
-        part def UserInterface{
-            action DisplayCurrentConditions;
-            action SetPreferences;
+            part def HumiditySensor{
+                attribute EnvHumidity;
+                action MeasureHumidity;
+            }
+            part def ClimateController{
+                ref part TemperatureSensor;
+                ref part HumiditySensor;
+                attribute TemperatureThreshold;
+                attribute HumidityThreshold;
+                action AdjustClimate{
+                    in EnvHumidity;
+                    in EnvTemperature;
+                    out ControlSignal;
+                }
+            }
+            part def UserInterface{
+                action DisplayCurrentConditions;
+                action SetPreferences;
+            }
         }
     }
     use case 'use system'{
+        import Definitions::*;
         subject system : System;
         actor user : User{
             action StartClimateControl;
@@ -32,6 +35,27 @@ package SmartHouseClimateCtrlorSystem{
             action SetTemperaturePreference;
             action ViewCurrentConditions;
         }
+    }
+    package actions{
+        import Definitions::*;
+        action def ClimateControlProcess{
+            import Definitions::*;
+            first StartControl;
+            then merge continueMonitoring;
+            action humiditySensor : HumiditySensor{
+                out envHumidity : Real;
+            }
+            action temperatureSensor : TemperatureSensor{
+                out envTemperature : Real;
+            }
+            then decide;
+            if humiditySensor.envHumidity > humidityUpperBound or humiditySensor.envHumidity < humidityLowerBound 
+                or temperatureSensor.envTemperature > temperatureUpperBound or temperatureSensor.envTemperature < temperatureLowerBound then adjustClimate;
+            else continueMonitoring;
+            action adjustClimate : AdjustClimate{}
+            then continueMonitoring;
+        }
+
     }
     state def SystemStates{
         entry; then Idle;
